@@ -10,6 +10,8 @@ def convert_color(img, conv='RGB2YCrCb'):
         return cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
     if conv == 'RGB2LUV':
         return cv2.cvtColor(img, cv2.COLOR_RGB2LUV)
+    if conv == 'RGB2HLS':
+        return cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
 # Define a function to return HOG features and visualization
 def get_hog_features(img, orient, pix_per_cell, cell_per_block, 
                         vis=False, feature_vec=True):
@@ -39,7 +41,7 @@ def bin_spatial(img, size=(32, 32)):
 
 # Define a function to compute color histogram features 
 # NEED TO CHANGE bins_range if reading .png files with mpimg!
-def color_hist(img, nbins=32, bins_range=(0, 256)):
+def color_hist(img, nbins=32, bins_range=(0, 1)):
     # Compute the histogram of the color channels separately
     channel1_hist = np.histogram(img[:,:,0], bins=nbins, range=bins_range)
     channel2_hist = np.histogram(img[:,:,1], bins=nbins, range=bins_range)
@@ -248,10 +250,12 @@ def find_cars(img, ystart, ystop, scale, color_space, svc, X_scaler, orient,
     rectangles =[]
     
     img_tosearch = img[ystart:ystop,:,:]
-    ctrans_tosearch = convert_color(img_tosearch, conv='RGB2YCrCb')
+    ctrans_tosearch = convert_color(img_tosearch, conv='RGB2HLS')
     if scale != 1:
         imshape = ctrans_tosearch.shape
+        print(imshape)
         ctrans_tosearch = cv2.resize(ctrans_tosearch, (np.int(imshape[1]/scale), np.int(imshape[0]/scale)))
+        print(ctrans_tosearch.shape)
         
     ch1 = ctrans_tosearch[:,:,0]
     ch2 = ctrans_tosearch[:,:,1]
@@ -259,8 +263,11 @@ def find_cars(img, ystart, ystop, scale, color_space, svc, X_scaler, orient,
 
     # Define blocks and steps as above
     nxblocks = (ch1.shape[1] // pix_per_cell) - cell_per_block + 1
+    print('nxblock', nxblocks)
     nyblocks = (ch1.shape[0] // pix_per_cell) - cell_per_block + 1 
+    print('nyblocks', nyblocks)
     nfeat_per_block = orient*cell_per_block**2
+    print('nfeat_per_block', nfeat_per_block)
     
     # 64 was the orginal sampling rate, with 8 cells and 8 pix per cell
     window = 64
@@ -297,7 +304,7 @@ def find_cars(img, ystart, ystop, scale, color_space, svc, X_scaler, orient,
             # Scale features and make a prediction
             test_features = X_scaler.transform(np.hstack((spatial_features, hist_features, hog_features)).reshape(1, -1))    
             #test_features = X_scaler.transform(np.hstack((shape_feat, hist_feat)).reshape(1, -1))    
-            test_prediction = svc.predict(test_features)
+            #test_prediction = svc.predict(test_features)
             
             if test_prediction == 1 or show_all_rectangles:
                 xbox_left = np.int(xleft*scale)
